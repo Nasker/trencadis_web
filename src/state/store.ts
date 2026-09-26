@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { PixelData, PixelSelectionMode } from '../camera/pixelGrid'
 import { DEFAULT_MUSIC, DEFAULT_SYNTH, DEFAULT_VISUAL, type MusicState, type SynthState, type VisualState } from './models'
+import type { PresetState } from '../preset/presetManager'
 
 export type AppStatus = 'idle' | 'starting' | 'running' | 'error'
 
@@ -26,6 +27,7 @@ interface AppState {
   updateMusic: (update: Partial<MusicState>) => void
   updateSynth: (update: Partial<SynthState>) => void
   updateVisual: (update: Partial<VisualState>) => void
+  applyPresetState: (preset: PresetState) => void
 }
 
 // Phase 0 store — will grow to mirror TrencadisState 1:1
@@ -53,4 +55,11 @@ export const useAppStore = create<AppState>((set) => ({
   updateMusic: (update) => set((state) => ({ musicState: { ...state.musicState, ...update } })),
   updateSynth: (update) => set((state) => ({ synthState: { ...state.synthState, ...update } })),
   updateVisual: (update) => set((state) => ({ visualState: { ...state.visualState, ...update } })),
+  applyPresetState: (preset) => set({
+    synthState: preset.synth,
+    musicState: preset.music,
+    visualState: preset.visual,
+    selectionMode: preset.selectionMode,
+    gridColumns: preset.gridColumns,
+  }),
 }))

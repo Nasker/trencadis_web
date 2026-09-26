@@ -1,0 +1,62 @@
+{
+  "name": "ringingtrip",
+  "version": 1,
+  "synth": {
+    "subOsc": false,
+    "sinOsc": true,
+    "sawOsc": false,
+    "sqrOsc": false,
+    "noiseOsc": true,
+    "cutoff": 0.38685014843940735,
+    "resonance": 0.3318042755126953,
+    "envelope": 0.0183485746383667,
+    "attack": 0.07186544686555862,
+    "release": 0.23456789553165436,
+    "distortion": 0,
+    "fm": 0.5581039786338806,
+    "fmAmount": 0.08024691045284271,
+    "chorusFreq": 0.15749235451221466,
+    "chorusMod": 0.37461772561073303,
+    "delayFigure": -1.4814814329147339,
+    "feedback": 0.37037035822868347
+  },
+  "music": {
+    "scaleIndex": 7,
+    "keyIndex": 4,
+    "octaveIndex": 3,
+    "figureIndex": 4,
+    "chordTypeIndex": 0,
+    "useChordMapping": false,
+    "tempo": 65.28836059570312
+  },
+  "acid": {
+    "enabled": true,
+    "hueAmount": 0.5,
+    "sizeAmount": 0.3,
+    "rotationAmount": 0.5,
+    "alphaAmount": 0.2,
+    "animationSpeed": 0.38,
+    "brightnessSizeBoost": 0.08
+  },
+  "acidPatternIndex": 1,
+  "selectionMode": "BRIGHTEST",
+  "useFrontCamera": true,
+  "useBlobMode": false,
+  "customGridResolution": null,
+  "midi": {
+    "enabled": false,
+    "outputMode": "INTERNAL",
+    "channel": 1,
+    "bleEnabled": false
+  },
+  "blob": {
+    "hueBuckets": 16,
+    "minBlobSize": 50,
+    "maxBlobSize": 800,
+    "maxBlobs": 500,
+    "blobBlend": 1.0,
+    "outlineWidth": 10.0,
+    "outlineAlpha": 0.5,
+    "blobsOnTop": true
+  }
+}

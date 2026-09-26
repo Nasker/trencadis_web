@@ -6,6 +6,8 @@ export const SCALE_NAMES = [
 ]
 
 export const KEY_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+export const CHORD_NAMES = ['Maj', 'min', 'dim', 'aug', 'M7', 'm7', '7', 'sus2', 'sus4', 'pwr']
+export const FIGURE_SYMBOLS = ['𝅝', '𝅗𝅥', '♩', '♪', '𝅘𝅥𝅯', '𝅘𝅥𝅰', '𝅘𝅥𝅱']
 
 const SCALE_SEMITONES = [
   [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23, 24],
