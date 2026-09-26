@@ -21,6 +21,13 @@ export async function startCamera(
   return stream
 }
 
+export function shouldMirrorCamera(stream: MediaStream, requested: Facing): boolean {
+  const facing = stream.getVideoTracks()[0]?.getSettings().facingMode
+  if (facing === 'user') return true
+  if (facing === 'environment' || facing === 'left' || facing === 'right') return false
+  return requested === 'user' || !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+}
+
 export function stopCamera(stream: MediaStream | null) {
   stream?.getTracks().forEach((t) => t.stop())
 }

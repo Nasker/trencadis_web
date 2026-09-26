@@ -44,18 +44,74 @@ body,
 }
 
 .debug-hud {
+  display: none;
+}
+
+.transport-controls {
   position: fixed;
-  left: 8px;
-  bottom: 8px;
-  font-family: ui-monospace, monospace;
-  font-size: 11px;
-  letter-spacing: 0.05em;
-  color: #0f0;
-  background: rgba(0, 0, 0, 0.5);
-  padding: 4px 8px;
-  border-radius: 4px;
-  pointer-events: none;
-  z-index: 5;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(440px, calc(100vw - 24px));
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+  background: rgba(10, 10, 12, 0.66);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(14px) saturate(1.25);
+  z-index: 6;
+}
+
+.mode-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+}
+
+.transport-controls button {
+  min-height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.06);
+  font: 700 11px/1 ui-monospace, monospace;
+  cursor: pointer;
+}
+
+.transport-controls button.active {
+  color: #06110b;
+  border-color: #63ffac;
+  background: #63ffac;
+}
+
+.transport-controls button.play.active {
+  background: #ffdc63;
+  border-color: #ffdc63;
+}
+
+.transport-controls label {
+  display: grid;
+  gap: 3px;
+  color: rgba(255, 255, 255, 0.78);
+  font: 700 10px/1 ui-monospace, monospace;
+}
+
+.transport-controls input {
+  width: 100%;
+  accent-color: #63ffac;
+}
+
+.pixel-readout {
+  grid-column: 1 / -1;
+  color: #63ffac;
+  text-align: center;
+  font: 600 10px/1 ui-monospace, monospace;
+  letter-spacing: 0.08em;
 }
 
 .start-overlay {
@@ -97,4 +153,133 @@ body,
   opacity: 0.6;
   margin: 0.5rem 0 1rem;
   word-break: break-word;
+}
+
+.edge-hints {
+  position: fixed;
+  top: 50%;
+  z-index: 7;
+  display: grid;
+  gap: 8px;
+  transform: translateY(-50%);
+}
+
+.edge-hints.left { left: 8px; }
+.edge-hints.right { right: 8px; }
+
+.edge-hints button,
+.panel-close,
+.osc-row button,
+.wide-toggle {
+  border: 1px solid rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.84);
+  background: rgba(10,10,12,0.58);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+}
+
+.edge-hints button {
+  width: 38px;
+  height: 46px;
+  border-radius: 11px;
+  font-size: 18px;
+}
+
+.phase-panel {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  z-index: 12;
+  width: min(300px, 84vw);
+  box-sizing: border-box;
+  overflow-y: auto;
+  padding: max(20px, env(safe-area-inset-top)) 16px max(90px, env(safe-area-inset-bottom));
+  color: white;
+  background: rgba(18,18,21,0.84);
+  box-shadow: 0 0 50px rgba(0,0,0,0.45);
+  backdrop-filter: blur(20px) saturate(1.3);
+  transition: transform 220ms ease;
+}
+
+.phase-panel h2 {
+  margin: 0 0 20px;
+  font: 800 13px/1 ui-monospace, monospace;
+  letter-spacing: 0.18em;
+}
+
+.music-panel,
+.visual-panel { left: 0; transform: translateX(-105%); }
+.synth-panel { right: 0; transform: translateX(105%); }
+.phase-panel.open { transform: translateX(0); }
+
+.panel-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 22px;
+}
+
+.panel-select,
+.panel-slider {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 15px;
+  color: rgba(255,255,255,0.76);
+  font: 700 11px/1 ui-monospace, monospace;
+}
+
+.panel-slider span {
+  display: flex;
+  justify-content: space-between;
+}
+
+.panel-slider b { color: #63ffac; }
+.panel-slider input { width: 100%; accent-color: #63ffac; }
+
+.panel-select select {
+  width: 100%;
+  padding: 9px;
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 8px;
+  color: white;
+  background: #242429;
+}
+
+.osc-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  margin-bottom: 18px;
+}
+
+.osc-row button,
+.wide-toggle {
+  min-height: 34px;
+  border-radius: 7px;
+  font: 700 9px/1 ui-monospace, monospace;
+}
+
+.osc-row button.active,
+.wide-toggle.active {
+  color: #06110b;
+  border-color: #63ffac;
+  background: #63ffac;
+}
+
+.wide-toggle { width: 100%; margin-bottom: 16px; }
+
+.panel-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 11;
+  border: 0;
+  background: rgba(0,0,0,0.25);
+}
+
+@media (max-width: 600px) {
+  .edge-hints button { width: 32px; height: 42px; }
+  .transport-controls { bottom: max(6px, env(safe-area-inset-bottom)); }
 }
