@@ -43,6 +43,18 @@ export interface VisualState {
   blobBlend: number
 }
 
+export interface MidiState {
+  supported: boolean
+  enabled: boolean
+  outputMode: 'internal' | 'midi' | 'both'
+  channel: number
+  deviceName: string
+  outputNames: string[]
+  syncSource: 'internal' | 'external'
+  externalClockAvailable: boolean
+  externalBpm: number
+}
+
 export const DEFAULT_SYNTH: SynthState = {
   subOsc: true,
   sinOsc: true,
@@ -84,6 +96,18 @@ export const DEFAULT_VISUAL: VisualState = {
   acidSpeed: 0.5,
   brightnessSize: 0.08,
   blobBlend: 0.28,
+}
+
+export const DEFAULT_MIDI: MidiState = {
+  supported: typeof navigator !== 'undefined' && 'requestMIDIAccess' in navigator,
+  enabled: false,
+  outputMode: 'internal',
+  channel: 1,
+  deviceName: '',
+  outputNames: [],
+  syncSource: 'internal',
+  externalClockAvailable: false,
+  externalBpm: 0,
 }
 
 export interface PerformanceState {

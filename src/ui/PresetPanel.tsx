@@ -49,6 +49,7 @@ export function PresetPanel({ open, onClose }: Props) {
       visual: state.visualState,
       selectionMode: state.selectionMode,
       gridColumns: state.gridColumns,
+      midi: state.midiState,
     }
   }
 

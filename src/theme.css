@@ -379,6 +379,12 @@ body,
   inset: 0;
   z-index: 7;
   pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.android-edge-hints.hidden {
+  opacity: 0;
+  visibility: hidden;
 }
 
 .edge-icon {
@@ -588,6 +594,21 @@ body,
 .rhythm-panel.open { transform: translate(-50%, 0); }
 .synth-panel.open { transform: translate(0, -50%); }
 .palette-panel.open { transform: translate(0, -50%); }
+
+.midi-enable { display: flex; align-items: center; justify-content: space-between; color: white; font-size: 10px; }
+.midi-enable input { accent-color: #00e5a0; }
+.midi-controls { display: grid; gap: 5px; margin-top: 5px; color: white; font-size: 10px; }
+.midi-mode-row { display: flex; gap: 4px; }
+.midi-mode-row button,
+.midi-channel-row button { border: 0; border-radius: 4px; color: white; background: #424242; font-size: 9px; }
+.midi-mode-row button { min-width: 48px; height: 28px; }
+.midi-channel-row { display: flex; gap: 2px; overflow-x: auto; padding-bottom: 3px; }
+.midi-channel-row button { flex: 0 0 27px; height: 26px; }
+.midi-mode-row button.active,
+.midi-channel-row button.active { background: #00a979; }
+.midi-controls select { width: 100%; color: white; background: #2f2f2f; border: 1px solid #666; border-radius: 4px; padding: 5px; font-size: 10px; }
+.midi-clock { color: rgba(255,255,255,0.55); }
+.midi-clock.active, .sync-buttons button.clock { color: #00e5a0; }
 
 @media (max-width: 600px) {
   .edge-icon { width: 42px; height: 42px; line-height: 42px; font-size: 20px; }

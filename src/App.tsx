@@ -5,6 +5,8 @@ import type { PixelData, PixelGrid } from './camera/pixelGrid'
 import { armResumeAudioOnInteraction, unlockAudio } from './audio/audioContext'
 import { synth } from './audio/engine'
 import { playPixel } from './audio/pixelToAudio'
+import { calculateFrequency } from './audio/musicConstants'
+import { webMidi } from './midi/WebMidi'
 import { StartOverlay } from './ui/StartOverlay'
 import { CameraCanvas } from './render/CameraCanvas'
 import { PhasePanels } from './ui/PhasePanels'
@@ -23,6 +25,8 @@ export default function App() {
   const figure = useAppStore((s) => s.musicState.figureIndex)
   const visual = useAppStore((s) => s.visualState)
   const setSelected = useAppStore((s) => s.setSelectedPixel)
+  const updateMidi = useAppStore((s) => s.updateMidi)
+  const updateMusic = useAppStore((s) => s.updateMusic)
   const videoRef = useRef<HTMLVideoElement>(null)
   const [video, setVideo] = useState<HTMLVideoElement | null>(null)
   const [mirrorX, setMirrorX] = useState(false)
@@ -36,18 +40,40 @@ export default function App() {
     synth.setOnEnvelopeReceived((value) => {
       envelope.current = value
     })
-    return () => synth.setOnEnvelopeReceived(null)
-  }, [])
+    const unsubscribeMidi = webMidi.subscribe((snapshot) => {
+      updateMidi(snapshot)
+      const state = useAppStore.getState()
+      if (state.midiState.syncSource === 'external' && snapshot.externalClockAvailable && snapshot.externalBpm > 0) {
+        updateMusic({ tempo: snapshot.externalBpm })
+      }
+    })
+    return () => {
+      synth.setOnEnvelopeReceived(null)
+      unsubscribeMidi()
+      webMidi.allNotesOff()
+    }
+  }, [updateMidi, updateMusic])
 
   const onStep = useCallback((pixel: PixelData, grid: PixelGrid) => {
-    if (!synth.isInitialized) return
     const state = useAppStore.getState()
-    playPixel(synth, pixel, grid, state.musicState, state.synthState)
+    const midi = state.midiState
+    if (midi.outputMode !== 'midi' && synth.isInitialized) {
+      playPixel(synth, pixel, grid, state.musicState, state.synthState)
+    }
+    if (midi.enabled && midi.outputMode !== 'internal') {
+      const frequency = calculateFrequency(pixel.hue, state.musicState)
+      const note = 69 + 12 * Math.log2(frequency / 440)
+      const stepMs = (60000 / state.musicState.tempo) / 2 ** (state.musicState.figureIndex - 2)
+      webMidi.noteOn(note, pixel.brightness * 127, midi.channel, stepMs * state.synthState.gateLength)
+    }
   }, [])
 
   const onSelected = useCallback((pixel: PixelData | null) => {
     setSelected(pixel)
-    if (!pixel && synth.isInitialized) synth.setNoteOn(false)
+    if (!pixel) {
+      if (synth.isInitialized) synth.setNoteOn(false)
+      webMidi.allNotesOff(useAppStore.getState().midiState.channel)
+    }
   }, [setSelected])
 
   const toggleFreeze = useCallback(() => {

@@ -1,5 +1,5 @@
 import type { PixelSelectionMode } from '../camera/pixelGrid'
-import type { MusicState, SynthState, VisualState } from '../state/models'
+import type { MidiState, MusicState, SynthState, VisualState } from '../state/models'
 
 export interface AndroidPreset {
   name: string
@@ -20,6 +20,11 @@ export interface AndroidPreset {
   useFrontCamera: boolean
   useBlobMode: boolean
   customGridResolution: number | null
+  midi?: {
+    enabled?: boolean
+    outputMode?: string
+    channel?: number
+  }
   blob?: {
     blobBlend?: number
     blobAlpha?: number
@@ -32,6 +37,7 @@ export interface PresetState {
   visual: VisualState
   selectionMode: PixelSelectionMode
   gridColumns: number
+  midi: MidiState
 }
 
 const STORAGE_KEY = 'trencadis.presets.v1'
@@ -61,6 +67,11 @@ export function encodePreset(name: string, state: PresetState): AndroidPreset {
     useFrontCamera: false,
     useBlobMode: state.visual.blobBlend > 0,
     customGridResolution: state.gridColumns,
+    midi: {
+      enabled: state.midi.enabled,
+      outputMode: state.midi.outputMode === 'midi' ? 'MIDI_OUT' : state.midi.outputMode.toUpperCase(),
+      channel: state.midi.channel,
+    },
     blob: { blobBlend: round(state.visual.blobBlend) },
   }
 }
@@ -87,6 +98,12 @@ export function decodePreset(preset: AndroidPreset, fallback: PresetState): Pres
     },
     selectionMode,
     gridColumns: preset.customGridResolution ?? fallback.gridColumns,
+    midi: {
+      ...fallback.midi,
+      enabled: preset.midi?.enabled ?? fallback.midi.enabled,
+      outputMode: preset.midi?.outputMode === 'MIDI_OUT' ? 'midi' : preset.midi?.outputMode?.toLowerCase() === 'both' ? 'both' : 'internal',
+      channel: Math.max(1, Math.min(16, preset.midi?.channel ?? fallback.midi.channel)),
+    },
   }
 }
 

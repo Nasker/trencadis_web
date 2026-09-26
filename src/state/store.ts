@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { PixelData, PixelSelectionMode } from '../camera/pixelGrid'
-import { DEFAULT_MUSIC, DEFAULT_SYNTH, DEFAULT_VISUAL, type MusicState, type SynthState, type VisualState } from './models'
+import { DEFAULT_MIDI, DEFAULT_MUSIC, DEFAULT_SYNTH, DEFAULT_VISUAL, type MidiState, type MusicState, type SynthState, type VisualState } from './models'
 import type { PresetState } from '../preset/presetManager'
 
 export type AppStatus = 'idle' | 'starting' | 'running' | 'error'
@@ -17,6 +17,7 @@ interface AppState {
   musicState: MusicState
   synthState: SynthState
   visualState: VisualState
+  midiState: MidiState
   setStatus: (status: AppStatus, errorMessage?: string) => void
   setAudioUnlocked: (unlocked: boolean) => void
   setAudioInitialized: (initialized: boolean) => void
@@ -27,6 +28,7 @@ interface AppState {
   updateMusic: (update: Partial<MusicState>) => void
   updateSynth: (update: Partial<SynthState>) => void
   updateVisual: (update: Partial<VisualState>) => void
+  updateMidi: (update: Partial<MidiState>) => void
   applyPresetState: (preset: PresetState) => void
 }
 
@@ -45,6 +47,7 @@ export const useAppStore = create<AppState>((set) => ({
   musicState: DEFAULT_MUSIC,
   synthState: DEFAULT_SYNTH,
   visualState: DEFAULT_VISUAL,
+  midiState: DEFAULT_MIDI,
   setStatus: (status, errorMessage) => set({ status, errorMessage: errorMessage ?? null }),
   setAudioUnlocked: (audioUnlocked) => set({ audioUnlocked }),
   setAudioInitialized: (isAudioInitialized) => set({ isAudioInitialized }),
@@ -55,10 +58,12 @@ export const useAppStore = create<AppState>((set) => ({
   updateMusic: (update) => set((state) => ({ musicState: { ...state.musicState, ...update } })),
   updateSynth: (update) => set((state) => ({ synthState: { ...state.synthState, ...update } })),
   updateVisual: (update) => set((state) => ({ visualState: { ...state.visualState, ...update } })),
+  updateMidi: (update) => set((state) => ({ midiState: { ...state.midiState, ...update } })),
   applyPresetState: (preset) => set({
     synthState: preset.synth,
     musicState: preset.music,
     visualState: preset.visual,
+    midiState: preset.midi,
     selectionMode: preset.selectionMode,
     gridColumns: preset.gridColumns,
   }),

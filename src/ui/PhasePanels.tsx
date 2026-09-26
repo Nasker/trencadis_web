@@ -1,7 +1,8 @@
-import { useRef, useState, type PointerEvent } from 'react'
+import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { CHORD_NAMES, FIGURE_SYMBOLS, KEY_NAMES, SCALE_NAMES } from '../audio/musicConstants'
 import type { AcidPatternType } from '../render/acidPattern'
 import { useAppStore } from '../state/store'
+import { webMidi } from '../midi/WebMidi'
 import { PresetPanel } from './PresetPanel'
 
 type Panel = 'modes' | 'scales' | 'rhythm' | 'synth' | 'palette' | 'preset' | null
@@ -28,16 +29,19 @@ export function PhasePanels({ frozen, onToggleFreeze, onLoadImage }: {
   onLoadImage: (file: File) => void
 }) {
   const [open, setOpen] = useState<Panel>(null)
+  const [iconsVisible, setIconsVisible] = useState(true)
   const lastTap = useRef(0)
   const music = useAppStore((state) => state.musicState)
   const synth = useAppStore((state) => state.synthState)
   const visual = useAppStore((state) => state.visualState)
+  const midi = useAppStore((state) => state.midiState)
   const mode = useAppStore((state) => state.selectionMode)
   const playing = useAppStore((state) => state.isPlaying)
   const columns = useAppStore((state) => state.gridColumns)
   const updateMusic = useAppStore((state) => state.updateMusic)
   const updateSynth = useAppStore((state) => state.updateSynth)
   const updateVisual = useAppStore((state) => state.updateVisual)
+  const updateMidi = useAppStore((state) => state.updateMidi)
   const setMode = useAppStore((state) => state.setSelectionMode)
   const setPlaying = useAppStore((state) => state.setPlaying)
   const setColumns = useAppStore((state) => state.setGridColumns)
@@ -45,6 +49,18 @@ export function PhasePanels({ frozen, onToggleFreeze, onLoadImage }: {
 
   const toggle = (panel: Exclude<Panel, null>) => setOpen((current) => current === panel ? null : panel)
   const close = () => setOpen(null)
+
+  useEffect(() => {
+    const onDoubleClick = (event: globalThis.MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (target.closest('.android-panel, .phase-panel, .edge-icon, button, input, select, summary')) return
+      event.preventDefault()
+      if (open) setOpen(null)
+      else setIconsVisible((visible) => !visible)
+    }
+    document.addEventListener('dblclick', onDoubleClick)
+    return () => document.removeEventListener('dblclick', onDoubleClick)
+  }, [open])
 
   const setRhythm = (event: PointerEvent<HTMLDivElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect()
@@ -60,9 +76,19 @@ export function PhasePanels({ frozen, onToggleFreeze, onLoadImage }: {
     if (period >= 200 && period <= 2000) updateMusic({ tempo: Math.round(60000 / period) })
   }
 
+  const toggleMidi = async () => {
+    if (midi.enabled) {
+      webMidi.disable()
+      updateMidi({ enabled: false, outputMode: 'internal' })
+    } else {
+      const enabled = await webMidi.enable()
+      updateMidi({ enabled })
+    }
+  }
+
   return (
     <>
-      <div className="android-edge-hints">
+      <div className={`android-edge-hints ${iconsVisible ? '' : 'hidden'}`}>
         <button className="edge-icon modes-icon" onClick={() => toggle('modes')}>📷</button>
         <button className="edge-icon palette-icon" onClick={() => toggle('palette')}>🎨</button>
         <button className="edge-icon scales-icon" onClick={() => toggle('scales')}>𝄞</button>
@@ -126,8 +152,11 @@ export function PhasePanels({ frozen, onToggleFreeze, onLoadImage }: {
           <div className="rhythm-actions">
             <button className={`transport-toggle ${playing ? 'playing' : ''}`} onClick={() => setPlaying(!playing)}>{playing ? '■' : '▶'}</button>
             <button className="tap-tempo" onClick={tapTempo}>TAP</button>
-            <div className="sync-buttons"><button className="active">INT</button><button disabled>EXT</button></div>
-            <span>{music.tempo} BPM</span>
+            <div className="sync-buttons">
+              <button className={midi.syncSource === 'internal' ? 'active' : ''} onClick={() => updateMidi({ syncSource: 'internal' })}>INT</button>
+              <button className={midi.syncSource === 'external' ? 'active clock' : ''} disabled={!midi.externalClockAvailable} onClick={() => updateMidi({ syncSource: 'external' })}>EXT</button>
+            </div>
+            <span>{music.tempo} BPM{midi.syncSource === 'external' && midi.externalClockAvailable ? ' • EXT' : ''}</span>
           </div>
         </div>
       </aside>
@@ -154,6 +183,18 @@ export function PhasePanels({ frozen, onToggleFreeze, onLoadImage }: {
         <Slider label="Chorus M" value={synth.chorusMod} onChange={(chorusMod) => updateSynth({ chorusMod })} />
         <Slider label="Delay" value={synth.delayFigure} min={-2} max={4} onChange={(delayFigure) => updateSynth({ delayFigure })} />
         <Slider label="Feedback" value={synth.feedback} max={0.49} onChange={(feedback) => updateSynth({ feedback })} />
+        <small>MIDI</small>
+        <label className="midi-enable"><span>{midi.supported ? 'Enable' : 'Unavailable'}</span><input type="checkbox" checked={midi.enabled} disabled={!midi.supported} onChange={() => void toggleMidi()} /></label>
+        {midi.enabled && <div className="midi-controls">
+          <span>Output</span>
+          <div className="midi-mode-row">
+            {([['internal', 'Pd'], ['midi', 'MIDI'], ['both', 'Both']] as const).map(([value, label]) => <button key={value} className={midi.outputMode === value ? 'active' : ''} onClick={() => { webMidi.allNotesOff(midi.channel); updateMidi({ outputMode: value }) }}>{label}</button>)}
+          </div>
+          {midi.outputNames.length > 0 && <select value={midi.deviceName} onChange={(event) => { webMidi.selectOutput(event.target.value); updateMidi({ deviceName: event.target.value }) }}>{midi.outputNames.map((name) => <option key={name}>{name}</option>)}</select>}
+          <span>Channel</span>
+          <div className="midi-channel-row">{Array.from({ length: 16 }, (_, index) => index + 1).map((channel) => <button key={channel} className={midi.channel === channel ? 'active' : ''} onClick={() => { webMidi.allNotesOff(midi.channel); updateMidi({ channel }) }}>{channel}</button>)}</div>
+          <span className={midi.externalClockAvailable ? 'midi-clock active' : 'midi-clock'}>{midi.externalClockAvailable ? `CLOCK ${midi.externalBpm.toFixed(1)} BPM` : 'NO CLOCK'}</span>
+        </div>}
       </aside>
 
       <aside className={`android-panel palette-panel ${open === 'palette' ? 'open' : ''}`}>
@@ -165,11 +206,12 @@ export function PhasePanels({ frozen, onToggleFreeze, onLoadImage }: {
         <Slider label="ROTATE" value={visual.acidRotation} onChange={(acidRotation) => updateVisual({ acidRotation })} />
         <Slider label="ALPHA" value={visual.acidAlpha} onChange={(acidAlpha) => updateVisual({ acidAlpha })} />
         <Slider label="SPEED" value={visual.acidSpeed} min={0} max={0.5} onChange={(acidSpeed) => updateVisual({ acidSpeed })} />
+        <Slider label="BRI SIZE" value={visual.brightnessSize} min={0} max={1.5} onChange={(brightnessSize) => updateVisual({ brightnessSize })} />
         <Slider label="BLOB" value={visual.blobBlend} onChange={(blobBlend) => updateVisual({ blobBlend })} />
       </aside>
 
       <PresetPanel open={open === 'preset'} onClose={close} />
-      {open && <button className="panel-scrim" aria-label="Close panel" onClick={close} />}
+      {open && <button className="panel-scrim" aria-label="Close panel" onDoubleClick={close} />}
     </>
   )
 }
