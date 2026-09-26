@@ -26,6 +26,9 @@ export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [video, setVideo] = useState<HTMLVideoElement | null>(null)
   const [mirrorX, setMirrorX] = useState(false)
+  const [image, setImage] = useState<HTMLImageElement | null>(null)
+  const [frozen, setFrozen] = useState(false)
+  const imageUrl = useRef<string | null>(null)
   const envelope = useRef(0)
 
   useEffect(() => {
@@ -46,6 +49,42 @@ export default function App() {
     setSelected(pixel)
     if (!pixel && synth.isInitialized) synth.setNoteOn(false)
   }, [setSelected])
+
+  const toggleFreeze = useCallback(() => {
+    const currentVideo = videoRef.current
+    if (!currentVideo) return
+    if (frozen) {
+      setImage(null)
+      if (imageUrl.current) URL.revokeObjectURL(imageUrl.current)
+      imageUrl.current = null
+      void currentVideo.play()
+      setFrozen(false)
+    } else {
+      currentVideo.pause()
+      setFrozen(true)
+    }
+  }, [frozen])
+
+  const loadImage = useCallback((file: File) => {
+    if (imageUrl.current) URL.revokeObjectURL(imageUrl.current)
+    const url = URL.createObjectURL(file)
+    imageUrl.current = url
+    const loaded = new Image()
+    loaded.onload = () => {
+      videoRef.current?.pause()
+      setImage(loaded)
+      setFrozen(true)
+    }
+    loaded.onerror = () => {
+      URL.revokeObjectURL(url)
+      if (imageUrl.current === url) imageUrl.current = null
+    }
+    loaded.src = url
+  }, [])
+
+  useEffect(() => () => {
+    if (imageUrl.current) URL.revokeObjectURL(imageUrl.current)
+  }, [])
 
   const start = useCallback(async () => {
     const v = videoRef.current
@@ -81,6 +120,7 @@ export default function App() {
       {video && (
         <CameraCanvas
           video={video}
+          image={image}
           mode={mode}
           playing={playing}
           periodMs={(60000 / bpm) / 2 ** (figure - 2)}
@@ -92,7 +132,7 @@ export default function App() {
           onSelected={onSelected}
         />
       )}
-      {status === 'running' && <PhasePanels />}
+      {status === 'running' && <PhasePanels frozen={frozen} onToggleFreeze={toggleFreeze} onLoadImage={loadImage} />}
       {status === 'running' && (
         <div className="debug-hud">
           {isAudioInitialized ? 'camera → tiles → hue notes' : 'audio ✗ (see console)'}

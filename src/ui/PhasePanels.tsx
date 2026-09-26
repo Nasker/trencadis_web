@@ -22,7 +22,11 @@ function Slider({ label, value, min = 0, max = 1, step = 0.01, onChange }: {
   )
 }
 
-export function PhasePanels() {
+export function PhasePanels({ frozen, onToggleFreeze, onLoadImage }: {
+  frozen: boolean
+  onToggleFreeze: () => void
+  onLoadImage: (file: File) => void
+}) {
   const [open, setOpen] = useState<Panel>(null)
   const lastTap = useRef(0)
   const music = useAppStore((state) => state.musicState)
@@ -37,6 +41,7 @@ export function PhasePanels() {
   const setMode = useAppStore((state) => state.setSelectionMode)
   const setPlaying = useAppStore((state) => state.setPlaying)
   const setColumns = useAppStore((state) => state.setGridColumns)
+  const imageInput = useRef<HTMLInputElement>(null)
 
   const toggle = (panel: Exclude<Panel, null>) => setOpen((current) => current === panel ? null : panel)
   const close = () => setOpen(null)
@@ -75,9 +80,16 @@ export function PhasePanels() {
         </div>
         <h2>CAM</h2>
         <button className="camera-mode">BACK</button>
+        <button className={`camera-action ${frozen ? 'frozen' : ''}`} onClick={onToggleFreeze}>{frozen ? '▶ LIVE' : '📸 FREEZE'}</button>
+        <button className="camera-action" onClick={() => imageInput.current?.click()}>🖼 LOAD</button>
+        <input ref={imageInput} hidden type="file" accept="image/*" onChange={(event) => {
+          const file = event.target.files?.[0]
+          if (file) onLoadImage(file)
+          event.target.value = ''
+        }} />
         <details>
           <summary>ADVANCED</summary>
-          <Slider label="GRID" value={columns} min={8} max={36} step={1} onChange={setColumns} />
+          <Slider label="GRID" value={columns} min={20} max={160} step={1} onChange={setColumns} />
         </details>
       </aside>
 

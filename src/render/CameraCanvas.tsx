@@ -6,6 +6,7 @@ import type { VisualState } from '../state/models'
 
 interface Props {
   video: HTMLVideoElement
+  image: HTMLImageElement | null
   mode: PixelSelectionMode
   playing: boolean
   periodMs: number
@@ -24,6 +25,7 @@ interface Props {
  */
 export function CameraCanvas({
   video,
+  image,
   mode,
   playing,
   periodMs,
@@ -102,11 +104,15 @@ export function CameraCanvas({
 
     const draw = (now = performance.now()) => {
       if (stopped) return
-      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0) {
+      const source = image ?? video
+      const sourceReady = image
+        ? image.complete && image.naturalWidth > 0
+        : video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0
+      if (sourceReady) {
         const w = canvas.width
         const h = canvas.height
-        const vw = video.videoWidth
-        const vh = video.videoHeight
+        const vw = image?.naturalWidth ?? video.videoWidth
+        const vh = image?.naturalHeight ?? video.videoHeight
         const cols = columns
         const rows = Math.max(1, Math.round(cols * h / w))
         sampleCanvas.width = cols
@@ -117,8 +123,8 @@ export function CameraCanvas({
         const sh = rows / scale
         const sx = (vw - sw) / 2
         const sy = (vh - sh) / 2
-        sampleCtx.setTransform(mirrorX ? -1 : 1, 0, 0, 1, mirrorX ? cols : 0, 0)
-        sampleCtx.drawImage(video, sx, sy, sw, sh, 0, 0, cols, rows)
+        sampleCtx.setTransform(mirrorX && !image ? -1 : 1, 0, 0, 1, mirrorX && !image ? cols : 0, 0)
+        sampleCtx.drawImage(source, sx, sy, sw, sh, 0, 0, cols, rows)
         sampleCtx.resetTransform()
         const rgba = sampleCtx.getImageData(0, 0, cols, rows).data
         if (!previousColors || previousColors.length !== cols * rows * 3) {
@@ -158,8 +164,10 @@ export function CameraCanvas({
           selected = pixels.reduce((best, pixel) =>
             pixel.brightness > best.brightness ? pixel : best,
           )
+          selectionKey = step
         } else if (mode === 'center') {
           selected = pixels[Math.floor(cols / 2) + Math.floor(rows / 2) * cols]
+          selectionKey = step % pixels.length
         } else if (pointer.down) {
           const col = Math.max(0, Math.min(cols - 1, Math.floor(pointer.x * cols)))
           const row = Math.max(0, Math.min(rows - 1, Math.floor(pointer.y * rows)))
@@ -246,6 +254,10 @@ export function CameraCanvas({
     }
 
     const schedule = () => {
+      if (image || video.paused) {
+        raf = requestAnimationFrame(draw)
+        return
+      }
       const v = video as HTMLVideoElement & {
         requestVideoFrameCallback?: (cb: () => void) => number
       }
@@ -266,7 +278,7 @@ export function CameraCanvas({
       canvas.removeEventListener('pointerup', pointerUp)
       canvas.removeEventListener('pointercancel', pointerUp)
     }
-  }, [video, mode, playing, periodMs, columns, mirrorX, visual, onStep, onSelected])
+  }, [video, image, mode, playing, periodMs, columns, mirrorX, visual, onStep, onSelected])
 
   return <canvas ref={canvasRef} className="camera-canvas" />
 }
