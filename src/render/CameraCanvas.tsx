@@ -149,8 +149,12 @@ export function CameraCanvas({
 
         const grid = { cols, rows, pixels }
         acid.tick(visual.acidEnabled ? visual.acidSpeed * 0.025 : 0)
-        envelopeTrail.unshift(Math.max(0, envelope.current))
-        if (envelopeTrail.length > 80) envelopeTrail.pop()
+        const envValue = Math.max(0, envelope.current)
+        const quiet = envValue <= 0.001 && envelopeTrail.length >= 24 && envelopeTrail.every((v) => v <= 0.001)
+        if (!quiet) {
+          envelopeTrail.unshift(envValue)
+          while (envelopeTrail.length > 24) envelopeTrail.pop()
+        }
         frameCount++
         if (frameCount % 2 === 0) cachedBlobs = detectBlobs(grid)
         let selected: PixelData | null = null

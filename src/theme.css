@@ -118,8 +118,10 @@ body,
   position: fixed;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 2rem;
   background: rgba(0, 0, 0, 0.85);
   cursor: pointer;
   z-index: 10;
@@ -128,6 +130,30 @@ body,
 .start-card {
   text-align: center;
   padding: 2rem;
+}
+
+.privacy-notice {
+  max-width: min(80vw, 420px);
+  padding: 1.25rem 1.5rem;
+  border-radius: 1rem;
+  background: rgba(76, 175, 80, 0.2);
+  border: 1px solid rgba(76, 175, 80, 0.5);
+  color: #a5d6a7;
+  text-align: center;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.privacy-notice strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.privacy-notice span {
+  display: block;
+  font-size: 0.85rem;
+  opacity: 0.9;
 }
 
 .start-title {
@@ -473,6 +499,7 @@ body,
   font-weight: 800;
 }
 .camera-action.frozen { background: #e53935; }
+.camera-action.active { background: #00a979; }
 .modes-panel details { width: 120px; margin-top: 12px; }
 .modes-panel summary { color: rgba(255,255,255,0.55); font-size: 9px; font-weight: 800; cursor: pointer; }
 

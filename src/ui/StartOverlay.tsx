@@ -25,6 +25,10 @@ export function StartOverlay({ status, errorMessage, onStart }: Props) {
           </>
         )}
       </div>
+      <div className="privacy-notice">
+        <strong>All camera processing stays on this device.</strong>
+        <span>Nothing is recorded, uploaded, or watched by anyone else.</span>
+      </div>
     </div>
   )
 }

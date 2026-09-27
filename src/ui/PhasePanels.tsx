@@ -23,10 +23,12 @@ function Slider({ label, value, min = 0, max = 1, step = 0.01, onChange }: {
   )
 }
 
-export function PhasePanels({ frozen, onToggleFreeze, onLoadImage }: {
+export function PhasePanels({ frozen, onToggleFreeze, onLoadImage, isFullscreen, onToggleFullscreen }: {
   frozen: boolean
   onToggleFreeze: () => void
   onLoadImage: (file: File) => void
+  isFullscreen: boolean
+  onToggleFullscreen: () => void
 }) {
   const [open, setOpen] = useState<Panel>(null)
   const [iconsVisible, setIconsVisible] = useState(true)
@@ -108,6 +110,7 @@ export function PhasePanels({ frozen, onToggleFreeze, onLoadImage }: {
         <button className="camera-mode">BACK</button>
         <button className={`camera-action ${frozen ? 'frozen' : ''}`} onClick={onToggleFreeze}>{frozen ? '▶ LIVE' : '📸 FREEZE'}</button>
         <button className="camera-action" onClick={() => imageInput.current?.click()}>🖼 LOAD</button>
+        <button className={`camera-action ${isFullscreen ? 'active' : ''}`} onClick={onToggleFullscreen}>{isFullscreen ? '⛶ EXIT' : '⛶ FULL'}</button>
         <input ref={imageInput} hidden type="file" accept="image/*" onChange={(event) => {
           const file = event.target.files?.[0]
           if (file) onLoadImage(file)
@@ -211,7 +214,7 @@ export function PhasePanels({ frozen, onToggleFreeze, onLoadImage }: {
       </aside>
 
       <PresetPanel open={open === 'preset'} onClose={close} />
-      {open && <button className="panel-scrim" aria-label="Close panel" onDoubleClick={close} />}
+      {open && <button className="panel-scrim" aria-label="Close panel" onClick={close} />}
     </>
   )
 }

@@ -32,6 +32,7 @@ export default function App() {
   const [mirrorX, setMirrorX] = useState(false)
   const [image, setImage] = useState<HTMLImageElement | null>(null)
   const [frozen, setFrozen] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const imageUrl = useRef<string | null>(null)
   const envelope = useRef(0)
 
@@ -40,6 +41,8 @@ export default function App() {
     synth.setOnEnvelopeReceived((value) => {
       envelope.current = value
     })
+    const onFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement))
+    document.addEventListener('fullscreenchange', onFullscreenChange)
     const unsubscribeMidi = webMidi.subscribe((snapshot) => {
       updateMidi(snapshot)
       const state = useAppStore.getState()
@@ -49,6 +52,7 @@ export default function App() {
     })
     return () => {
       synth.setOnEnvelopeReceived(null)
+      document.removeEventListener('fullscreenchange', onFullscreenChange)
       unsubscribeMidi()
       webMidi.allNotesOff()
     }
@@ -75,6 +79,15 @@ export default function App() {
       webMidi.allNotesOff(useAppStore.getState().midiState.channel)
     }
   }, [setSelected])
+
+  const toggleFullscreen = useCallback(async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen()
+      else await document.documentElement.requestFullscreen()
+    } catch {
+      // Browsers may reject the request silently; keep running without fullscreen.
+    }
+  }, [])
 
   const toggleFreeze = useCallback(() => {
     const currentVideo = videoRef.current
@@ -134,6 +147,7 @@ export default function App() {
 
       setVideo(v)
       setStatus('running')
+      void document.documentElement.requestFullscreen().catch(() => {})
     } catch (e) {
       setStatus('error', e instanceof Error ? e.message : String(e))
     }
@@ -158,7 +172,7 @@ export default function App() {
           onSelected={onSelected}
         />
       )}
-      {status === 'running' && <PhasePanels frozen={frozen} onToggleFreeze={toggleFreeze} onLoadImage={loadImage} />}
+      {status === 'running' && <PhasePanels frozen={frozen} onToggleFreeze={toggleFreeze} onLoadImage={loadImage} isFullscreen={isFullscreen} onToggleFullscreen={toggleFullscreen} />}
       {status === 'running' && (
         <div className="debug-hud">
           {isAudioInitialized ? 'camera → tiles → hue notes' : 'audio ✗ (see console)'}
