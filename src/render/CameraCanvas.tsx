@@ -50,8 +50,14 @@ export function CameraCanvas({
     let lastStep = -1
     let lastPointerCell = -1
     let frameCount = 0
-    let cachedBlobs: PixelBlob[] = []
+    let smoothedSize: Float32Array | null = null
+    let smoothedRotation: Float32Array | null = null
     const envelopeTrail: number[] = []
+    let currentPixels: PixelData[] = []
+    let currentGrid: PixelGrid = { cols: 0, rows: 0, pixels: [] }
+    let currentBlobs: PixelBlob[] = []
+    let lastSampleTime = 0
+    const SAMPLE_INTERVAL_MS = 1000 / 30
     const acid = new AcidPattern()
     const pointer = { x: 0, y: 0, down: false }
     const sampleCanvas = document.createElement('canvas')
@@ -87,9 +93,28 @@ export function CameraCanvas({
     canvas.addEventListener('pointerup', pointerUp)
     canvas.addEventListener('pointercancel', pointerUp)
 
-    const drawBlobs = (blobs: PixelBlob[], blockWidth: number, blockHeight: number) => {
+    const drawBlobs = (blobs: PixelBlob[], blockWidth: number, blockHeight: number, selected: PixelData | null) => {
       for (const blob of [...blobs].sort((a, b) => a.averageColor.brightness - b.averageColor.brightness)) {
         if (blob.hull.length < 3) continue
+        const cx = blob.center.x * blockWidth
+        const cy = blob.center.y * blockHeight
+        let rippleScale = 1
+        let rippleRotation = 0
+        if (selected && envelopeTrail.length) {
+          const dx = blob.center.x - selected.gridX
+          const dy = blob.center.y - selected.gridY
+          const distance = Math.sqrt(dx * dx + dy * dy)
+          const trailIndex = Math.floor(distance / 2.5)
+          const value = envelopeTrail[trailIndex] ?? 0
+          // Blobs get half the tile swell so neighbouring shards stay readable.
+          rippleScale += 0.8 * value / (1 + distance * 0.05)
+          rippleRotation = 35 * value / (1 + distance * 0.08)
+        }
+        ctx.save()
+        ctx.translate(cx, cy)
+        ctx.rotate(rippleRotation * Math.PI / 180)
+        ctx.scale(rippleScale, rippleScale)
+        ctx.translate(-cx, -cy)
         ctx.beginPath()
         ctx.moveTo(blob.hull[0].x * blockWidth, blob.hull[0].y * blockHeight)
         for (let i = 1; i < blob.hull.length; i++) {
@@ -99,6 +124,7 @@ export function CameraCanvas({
         const color = blob.averageColor
         ctx.fillStyle = `rgba(${color.red * 255},${color.green * 255},${color.blue * 255},${visual.blobBlend})`
         ctx.fill()
+        ctx.restore()
       }
     }
 
@@ -108,13 +134,15 @@ export function CameraCanvas({
       const sourceReady = image
         ? image.complete && image.naturalWidth > 0
         : video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0
-      if (sourceReady) {
-        const w = canvas.width
-        const h = canvas.height
+      const w = canvas.width
+      const h = canvas.height
+      const cols = columns
+      const rows = Math.max(1, Math.round(cols * h / w))
+      const gridChanged = currentGrid.cols !== cols || currentGrid.rows !== rows
+      if (sourceReady && (now - lastSampleTime >= SAMPLE_INTERVAL_MS || gridChanged)) {
+        lastSampleTime = now
         const vw = image?.naturalWidth ?? video.videoWidth
         const vh = image?.naturalHeight ?? video.videoHeight
-        const cols = columns
-        const rows = Math.max(1, Math.round(cols * h / w))
         sampleCanvas.width = cols
         sampleCanvas.height = rows
 
@@ -147,7 +175,13 @@ export function CameraCanvas({
           }
         }
 
-        const grid = { cols, rows, pixels }
+        currentGrid = { cols, rows, pixels }
+        currentPixels = pixels
+        frameCount++
+        if (frameCount % 2 === 0) currentBlobs = detectBlobs(currentGrid)
+      }
+
+      if (currentPixels.length > 0) {
         acid.tick(visual.acidEnabled ? visual.acidSpeed * 0.025 : 0)
         const envValue = Math.max(0, envelope.current)
         const quiet = envValue <= 0.001 && envelopeTrail.length >= 24 && envelopeTrail.every((v) => v <= 0.001)
@@ -155,8 +189,9 @@ export function CameraCanvas({
           envelopeTrail.unshift(envValue)
           while (envelopeTrail.length > 24) envelopeTrail.pop()
         }
-        frameCount++
-        if (frameCount % 2 === 0) cachedBlobs = detectBlobs(grid)
+
+        const grid = currentGrid
+        const pixels = currentPixels
         let selected: PixelData | null = null
         let selectionKey = -1
 
@@ -170,12 +205,12 @@ export function CameraCanvas({
           )
           selectionKey = step
         } else if (mode === 'center') {
-          selected = pixels[Math.floor(cols / 2) + Math.floor(rows / 2) * cols]
+          selected = pixels[Math.floor(grid.cols / 2) + Math.floor(grid.rows / 2) * grid.cols]
           selectionKey = step % pixels.length
         } else if (pointer.down) {
-          const col = Math.max(0, Math.min(cols - 1, Math.floor(pointer.x * cols)))
-          const row = Math.max(0, Math.min(rows - 1, Math.floor(pointer.y * rows)))
-          selectionKey = row * cols + col
+          const col = Math.max(0, Math.min(grid.cols - 1, Math.floor(pointer.x * grid.cols)))
+          const row = Math.max(0, Math.min(grid.rows - 1, Math.floor(pointer.y * grid.rows)))
+          selectionKey = row * grid.cols + col
           selected = pixels[selectionKey]
         }
 
@@ -186,13 +221,18 @@ export function CameraCanvas({
         }
         onSelected(selected)
 
-        const blockWidth = w / cols
-        const blockHeight = h / rows
+        const blockWidth = w / grid.cols
+        const blockHeight = h / grid.rows
         const baseSize = Math.sqrt(blockWidth * blockHeight)
         ctx.fillStyle = selected
           ? `rgba(${selected.red * 255},${selected.green * 255},${selected.blue * 255},0.22)`
           : '#000'
         ctx.fillRect(0, 0, w, h)
+
+        if (!smoothedSize || !smoothedRotation || smoothedSize.length !== pixels.length) {
+          smoothedSize = new Float32Array(pixels.length)
+          smoothedRotation = new Float32Array(pixels.length)
+        }
 
         for (const pixel of [...pixels].sort((a, b) => a.brightness - b.brightness)) {
           const x = (pixel.gridX + 0.5) * blockWidth
@@ -207,6 +247,7 @@ export function CameraCanvas({
           const hue = visual.acidEnabled
             ? pixel.hue * (1 - visual.acidHue) + acidHue * visual.acidHue
             : pixel.hue
+          const pixelIndex = pixel.gridY * grid.cols + pixel.gridX
           let rippleScale = 1
           let rippleRotation = 0
           if (selected && envelopeTrail.length) {
@@ -215,17 +256,23 @@ export function CameraCanvas({
             const distance = Math.sqrt(dx * dx + dy * dy)
             const trailIndex = Math.floor(distance / 2.5)
             const value = envelopeTrail[trailIndex] ?? 0
-            const attenuation = 1 / (1 + distance * 0.08)
-            rippleScale += 0.6 * value * attenuation
-            rippleRotation = 45 * value / (1 + distance * 0.1)
+            const attenuation = 1 / (1 + distance * 0.05)
+            rippleScale += 1.6 * value * attenuation
+            rippleRotation = 70 * value / (1 + distance * 0.08)
           }
-          const size = baseSize
+          const targetSize = baseSize
             * (0.5 + pixel.brightness * 10 * visual.brightnessSize)
             * (visual.acidEnabled ? acid.size(angle, visual.acidSize) : 1)
             * rippleScale
-          const rotation = pixel.hue / 360 * 54
+          const targetRotation = pixel.hue / 360 * 54
             + (visual.acidEnabled ? acid.rotation(angle, 90 * visual.acidRotation) : 0)
             + rippleRotation
+          const prevSize = smoothedSize[pixelIndex]
+          const prevRotation = smoothedRotation[pixelIndex]
+          const size = prevSize === 0 ? targetSize : prevSize * 0.6 + targetSize * 0.4
+          const rotation = prevRotation === 0 ? targetRotation : prevRotation * 0.6 + targetRotation * 0.4
+          smoothedSize[pixelIndex] = size
+          smoothedRotation[pixelIndex] = rotation
           const baseAlpha = 0.5 + pixel.brightness * 0.45
           const alpha = baseAlpha * (
             (1 - (visual.acidEnabled ? visual.acidAlpha : 0))
@@ -239,7 +286,7 @@ export function CameraCanvas({
           ctx.restore()
         }
 
-        drawBlobs(cachedBlobs, blockWidth, blockHeight)
+        drawBlobs(currentBlobs, blockWidth, blockHeight, selected)
 
         if (selected) {
           ctx.beginPath()
